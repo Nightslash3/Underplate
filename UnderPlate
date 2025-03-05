@@ -1,0 +1,72 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local player = Players.LocalPlayer
+
+if not game:IsLoaded() then game.Loaded:Wait() end
+
+game:GetService("StarterPlayer").DevComputerMovementMode = Enum.DevComputerMovementMode.KeyboardMouse
+game:GetService("StarterPlayer").DevTouchMovementMode = Enum.DevTouchMovementMode.Thumbstick
+
+local platformName = "UnderPlate"
+local offsetY = -4
+
+local lockY = false
+local lockedY = nil
+
+local function getOrCreatePlatform()
+	local existing = workspace:FindFirstChild(platformName)
+	if existing then return existing end
+	local platform = Instance.new("Part")
+	platform.Name = platformName
+	platform.Size = Vector3.new(6, 1, 6)
+	platform.Anchored = true
+	platform.CanCollide = true
+	platform.Material = Enum.Material.SmoothPlastic
+	platform.BrickColor = BrickColor.new("Bright blue")
+	platform.Transparency = 0.9
+	platform.Parent = workspace
+	return platform
+end
+
+local platform = getOrCreatePlatform()
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	if gameProcessed then return end
+	if input.KeyCode == Enum.KeyCode.R then
+		if not lockY then
+			lockY = true
+			lockedY = platform.Position.Y
+		else
+			lockY = false
+		end
+	elseif input.KeyCode == Enum.KeyCode.E then
+		if lockY then
+			lockedY = lockedY + 1
+		end
+	elseif input.KeyCode == Enum.KeyCode.Q then
+		if lockY then
+			lockedY = lockedY - 1
+		end
+	elseif input.KeyCode == Enum.KeyCode.G then
+		platform:Destroy()
+	end
+end)
+
+local function trackMovement(character)
+	local hrp = character:WaitForChild("HumanoidRootPart")
+	RunService.RenderStepped:Connect(function()
+		if character and character:FindFirstChild("HumanoidRootPart") then
+			local currentPos = hrp.Position
+			local newY = lockY and lockedY or (currentPos.Y + offsetY)
+			platform.Position = Vector3.new(currentPos.X, newY, currentPos.Z)
+		end
+	end)
+end
+
+if player.Character then
+	trackMovement(player.Character)
+end
+player.CharacterAdded:Connect(function(character)
+	trackMovement(character)
+end)
