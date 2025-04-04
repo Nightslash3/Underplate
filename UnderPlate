@@ -14,6 +14,9 @@ local offsetY = -4
 local lockY = false
 local lockedY = nil
 
+-- Connection storage
+local currentRenderConnection = nil
+
 local function getOrCreatePlatform()
 	local existing = workspace:FindFirstChild(platformName)
 	if existing then return existing end
@@ -54,9 +57,27 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 end)
 
 local function trackMovement(character)
+	if currentRenderConnection then
+		currentRenderConnection:Disconnect()
+		currentRenderConnection = nil
+	end
+	
 	local hrp = character:WaitForChild("HumanoidRootPart")
-	RunService.RenderStepped:Connect(function()
-		if character and character:FindFirstChild("HumanoidRootPart") then
+	local humanoid = character:WaitForChild("Humanoid")
+	
+	-- Listen for character death to clean up connection
+	local deathConnection
+	deathConnection = humanoid.Died:Connect(function()
+		if currentRenderConnection then
+			currentRenderConnection:Disconnect()
+			currentRenderConnection = nil
+		end
+		deathConnection:Disconnect()
+	end)
+	
+	
+	currentRenderConnection = RunService.RenderStepped:Connect(function()
+		if character and character:FindFirstChild("HumanoidRootPart") and character.Parent ~= nil then
 			local currentPos = hrp.Position
 			local newY = lockY and lockedY or (currentPos.Y + offsetY)
 			platform.Position = Vector3.new(currentPos.X, newY, currentPos.Z)
@@ -67,6 +88,7 @@ end
 if player.Character then
 	trackMovement(player.Character)
 end
+
 player.CharacterAdded:Connect(function(character)
 	trackMovement(character)
 end)
